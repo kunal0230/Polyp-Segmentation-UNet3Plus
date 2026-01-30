@@ -55,7 +55,7 @@ def tf_parse(x, y, img_h, img_w):
     y = read_mask(y, img_h, img_w)
     return x, y
 
-def tf_dataset(X, Y, batch=2, img_h=256, img_w=256, augment=False):
+def tf_dataset(X, Y, batch=8, img_h=256, img_w=256, augment=False):
     ds = tf.data.Dataset.from_tensor_slices((X, Y))
     
     def _augment_fn(x, y):
@@ -70,6 +70,10 @@ def tf_dataset(X, Y, batch=2, img_h=256, img_w=256, augment=False):
         return x, y
 
     ds = ds.map(lambda x, y: tf_parse(x, y, img_h, img_w), num_parallel_calls=tf.data.AUTOTUNE)
+
+    # Use cache to load data into memory for faster training
+    ds = ds.cache()
+
     if augment:
         ds = ds.map(_augment_fn, num_parallel_calls=tf.data.AUTOTUNE)
         
@@ -86,7 +90,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_path", type=str, default="Kvasir-SEG", help="Path to the dataset")
     parser.add_argument("--save_path", type=str, default="files", help="Path to save model and logs")
     parser.add_argument("--epochs", type=int, default=100, help="Number of epochs")
-    parser.add_argument("--batch_size", type=int, default=2, help="Batch size")
+    parser.add_argument("--batch_size", type=int, default=8, help="Batch size")
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
     parser.add_argument("--img_size", type=int, default=256, help="Image size (H and W)")
     args = parser.parse_args()
