@@ -245,7 +245,7 @@ if __name__ == "__main__":
     print(f"Model compiled successfully!")
     print(f"Total parameters: {model.count_params():,}")
 
-    # Checkpoint & Resume Logic
+    # Checkpoints
     initial_epoch = 0
     if os.path.exists(model_path):
         print(f"\nFound existing model at {model_path}. Loading weights...")
