@@ -157,7 +157,7 @@ if __name__ == "__main__":
     np.random.seed(42)
     tf.random.set_seed(42)
 
-    # Arguments
+    # Argument Parsing
     parser = argparse.ArgumentParser(description="UNet3+ Training")
     parser.add_argument("--dataset_path", type=str, default="Kvasir-SEG", help="Path to the dataset")
     parser.add_argument("--save_path", type=str, default="files", help="Path to save model and logs")
@@ -245,7 +245,7 @@ if __name__ == "__main__":
     print(f"Model compiled successfully!")
     print(f"Total parameters: {model.count_params():,}")
 
-    # Checkpoints
+    # Checkpoint & Resume Logic
     initial_epoch = 0
     if os.path.exists(model_path):
         print(f"\nFound existing model at {model_path}. Loading weights...")
