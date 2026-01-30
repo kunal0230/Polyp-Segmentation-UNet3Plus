@@ -153,11 +153,11 @@ class CosineLRSchedule(tf.keras.callbacks.Callback):
         print(f"\nEpoch {epoch + 1}: Learning rate is {lr:.6f}")
 
 if __name__ == "__main__":
-    """ Seeding """
+    # Seeding
     np.random.seed(42)
     tf.random.set_seed(42)
 
-    """ Argument Parsing """
+    # Arguments
     parser = argparse.ArgumentParser(description="UNet3+ Training")
     parser.add_argument("--dataset_path", type=str, default="Kvasir-SEG", help="Path to the dataset")
     parser.add_argument("--save_path", type=str, default="files", help="Path to save model and logs")
@@ -172,13 +172,14 @@ if __name__ == "__main__":
     if args.mixed_precision:
         setup_gpu()
 
+    # Directories
     create_dir(args.save_path)
     
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     run_dir = os.path.join(args.save_path, f"run_{timestamp}")
     create_dir(run_dir)
 
-    """ Hyperparameters """
+    # Hyperparameters
     IMG_H = args.img_size
     IMG_W = args.img_size
     batch_size = args.batch_size
@@ -196,7 +197,7 @@ if __name__ == "__main__":
     print(f"Epochs: {num_epochs}")
     print("-" * 30 + "\n")
 
-    """ Dataset """
+    # Dataset
     (train_x, train_y), (valid_x, valid_y), (test_x, test_y) = load_dataset(args.dataset_path)
 
     print(f"Train: \t{len(train_x)} images - {len(train_y)} masks")
@@ -219,7 +220,7 @@ if __name__ == "__main__":
         augment=False
     )
 
-    """ Model """
+    # Model
     print("Building UNet3+ model...")
     model = unet3plus((IMG_H, IMG_W, 3))
     
@@ -244,7 +245,7 @@ if __name__ == "__main__":
     print(f"Model compiled successfully!")
     print(f"Total parameters: {model.count_params():,}")
 
-    """ Checkpoint & Resume Logic """
+    # Checkpoints
     initial_epoch = 0
     if os.path.exists(model_path):
         print(f"\nFound existing model at {model_path}. Loading weights...")
