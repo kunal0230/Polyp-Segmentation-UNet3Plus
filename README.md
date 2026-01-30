@@ -1,91 +1,91 @@
-# Polyp Segmentation Using UNet 3+ in TensorFlow
+# Polyp Segmentation using UNet 3+ in TensorFlow
 
-This project implements a deep learning model for segmenting polyps in medical images using the **UNet 3+** architecture in TensorFlow. It is designed to be easy to use, with support for Google Colab and command-line configuration.
+This repository contains an optimized TensorFlow implementation of **UNet 3+** for automatic polyp segmentation in medical imaging, specifically designed for the **Kvasir-SEG** dataset.
 
-## Features
+## Key Features
 
-- **UNet 3+ Architecture**: Advanced segmentation model with full-scale skip connections.
-- **Metrics**: Dice Coefficient, IoU (Jaccard Index), Precision, Recall.
-- **Data Augmentation**: Random flipping and rotation during training.
-- **Configurable**: Easy-to-use command-line arguments for hyperparameters.
-- **Colab Ready**: Includes `Train_on_Colab.ipynb` for one-click training on Google Colab.
+* **UNet 3+ Architecture**: Advanced architecture ensuring full-scale skip connections for better feature aggregation.
+* **Optimized Data Pipeline**:
+  * **Mixed Precision Training**: Levarages Float16 operations for faster training on Tensor Core GPUs (T4, V100, A100).
+  * **Native TensorFlow I/O**: Efficient image decoding and resizing avoiding CPU bottlenecks.
+  * **Caching & Prefetching**: Maximizes GPU utilization by loading data ahead of time.
+* **Advanced Training Techniques**:
+  * **Cosine Annealing Schedule**: Smooth learning rate decay for better convergence.
+  * **Data Augmentation**: Robust pipeline including rotations, flips, brightness, and contrast adjustments.
+  * **XLA Compilation**: Uses Just-In-Time (JIT) compilation for graph optimization.
+* **Robustness**:
+  * **Automatic Resuming**: Automatically detects and resumes training from the last saved epoch in case of interruptions.
+  * **Memory Management**: Custom callbacks to prevent OOM errors during long training sessions.
 
 ## Dataset
 
-The project uses the **Kvasir-SEG** dataset.
+This project uses the **Kvasir-SEG** dataset, which consists of 1,000 polyp images and their corresponding ground truth masks.
 
-1. Download the dataset (e.g., from [Simula](https://datasets.simula.no/kvasir-seg/)).
-2. Unzip it. You should have a folder `Kvasir-SEG` containing `images` and `masks`.
+* Download from: [Simula Datasets](https://datasets.simula.no/kvasir-seg/)
+* The script handles automatic downloading and extraction when running on Colab.
 
 ## Installation
 
-### Local Setup
+```bash
+pip install -r requirements.txt
+```
 
-1. Clone the repository:
+**Requirements:**
 
-   ```bash
-   git clone <repository-url>
-   cd Polyp-Segmentation-using-UNet-3-Plus-in-TensorFlow-main
-   ```
-
-2. Install dependencies:
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-### Google Colab
-
-1. Upload the `Kvasir-SEG.zip` and the project files (or clone the repo in Colab).
-2. Open `Train_on_Colab.ipynb` and run the cells.
+* TensorFlow 2.x
+* OpenCV
+* Pandas
+* Scikit-learn
 
 ## Usage
 
-### Training
+### 1. Training
 
-Run `train.py` to train the model. You can specify parameters via command line:
-
-```bash
-python train.py --dataset_path "Kvasir-SEG" --epochs 100 --batch_size 4 --img_size 256
-```
-
-Arguments:
-
-- `--dataset_path`: Path to the dataset folder (default: `Kvasir-SEG`).
-- `--save_path`: Path to save model and logs (default: `files`).
-- `--epochs`: Number of epochs (default: 100).
-- `--batch_size`: Batch size (default: 2).
-- `--lr`: Learning rate (default: 1e-4).
-- `--img_size`: Image resolution (default: 256).
-
-### Evaluation
-
-Run `test.py` to evaluate the model and generate result images:
+To train the model with default settings (optimized for 16GB VRAM GPUs):
 
 ```bash
-python test.py --model_path "files/model.keras" --dataset_path "Kvasir-SEG" --img_size 256
+python train.py --epochs 100 --batch_size 16 --lr 1e-3
 ```
 
-Arguments:
+**Advanced Options:**
 
-- `--model_path`: Path to the trained model file.
-- `--save_path`: Path to save result images (default: `results`).
-- `--img_size`: Image resolution (must match training resolution).
+```bash
+python train.py \
+    --dataset_path "Kvasir-SEG" \
+    --img_size 256 \
+    --epochs 100 \
+    --batch_size 16 \
+    --lr 1e-3 \
+    --use_cosine_lr \
+    --mixed_precision
+```
 
-## Results
+### 2. Google Colab
 
-The `test.py` script will output quantitative metrics (Dice, IoU, Recall, Precision) and save visual comparisons in the `results/` folder.
+For users without local GPUs, we provide a streamlined Colab notebook.
 
-Example output:
+* Open `train_on_colab.ipynb` in Google Colab.
+* Run the cells to check GPU, clone the repository, and start training.
 
-- **Dice Coefficient**: ~0.85
-- **IoU**: ~0.75
+### 3. Evaluation
 
-## Model Architecture
+To evaluate the trained model on the test set:
 
-UNet 3+ utilizes full-scale skip connections, combining high-level semantics with low-level details more effectively than standard UNet or UNet++.
+```bash
+python test.py --model_path "files/model.keras" --dataset_path "Kvasir-SEG"
+```
 
-## Credits
+Results (images and masks) will be saved in the `results/` directory.
 
-- **Paper**: UNet 3+: A Full-Scale Connected UNet for Medical Image Segmentation.
-- **Dataset**: Kvasir-SEG.
+## File Structure
+
+* `train.py`: Main training script with optimization logic.
+* `test.py`: Evaluation script for generating predictions.
+* `model.py`: UNet 3+ architecture definition.
+* `metrics.py`: Custom metrics (Dice, IoU) compliant with TensorFlow graph execution.
+* `train_on_colab.ipynb`: One-click Jupyter notebook for Colab training.
+
+## References
+
+* *UNet 3+: A Full-Scale Connected UNet for Medical Image Segmentation* (Huang et al., 2020)
+* *Kvasir-SEG: A Segmented Polyp Dataset* (Jha et al., 2020)
