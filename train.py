@@ -34,33 +34,25 @@ def load_dataset(path, split=0.1):
 
     return (train_x, train_y), (valid_x, valid_y), (test_x, test_y)
 
-
 def read_image(path, img_h, img_w):
-    path = path.decode()
-    image = cv2.imread(path, cv2.IMREAD_COLOR)
-    image = cv2.resize(image, (img_w, img_h))
-    image = image / 255.0
-    image = image.astype(np.float32)
-    return image
+    x = tf.io.read_file(path)
+    x = tf.image.decode_image(x, channels=3, expand_animations=False)
+    x = tf.image.resize(x, (img_h, img_w))
+    x = x / 255.0
+    x.set_shape([img_h, img_w, 3])
+    return x
 
 def read_mask(path, img_h, img_w):
-    path = path.decode()
-    mask = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-    mask = cv2.resize(mask, (img_w, img_h))
-    mask = mask / 255.0
-    mask = mask.astype(np.float32)
-    mask = np.expand_dims(mask, axis=-1)
-    return mask
+    x = tf.io.read_file(path)
+    x = tf.image.decode_image(x, channels=1, expand_animations=False)
+    x = tf.image.resize(x, (img_h, img_w))
+    x = x / 255.0
+    x.set_shape([img_h, img_w, 1])
+    return x
 
 def tf_parse(x, y, img_h, img_w):
-    def _parse(x, y):
-        x = read_image(x, img_h, img_w)
-        y = read_mask(y, img_h, img_w)
-        return x, y
-
-    x, y = tf.numpy_function(_parse, [x, y], [tf.float32, tf.float32])
-    x.set_shape([img_h, img_w, 3])
-    y.set_shape([img_h, img_w, 1])
+    x = read_image(x, img_h, img_w)
+    y = read_mask(y, img_h, img_w)
     return x, y
 
 def tf_dataset(X, Y, batch=2, img_h=256, img_w=256, augment=False):
