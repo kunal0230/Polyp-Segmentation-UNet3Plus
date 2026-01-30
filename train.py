@@ -10,9 +10,14 @@ import tensorflow as tf
 from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, ReduceLROnPlateau, EarlyStopping
 from tensorflow.keras.optimizers import Adam, SGD
 from sklearn.model_selection import train_test_split
+from tensorflow.keras import mixed_precision # Added import
 from model import unet3plus
 from metrics import dice_loss, dice_coef, iou
 import argparse
+
+# Enable Mixed Precision for T4 GPU (speeds up training)
+policy = mixed_precision.Policy('mixed_float16')
+mixed_precision.set_global_policy(policy)
 
 def create_dir(path):
     if not os.path.exists(path):
