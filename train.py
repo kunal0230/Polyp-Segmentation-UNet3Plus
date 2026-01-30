@@ -3,6 +3,7 @@ import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 import numpy as np
+import pandas as pd
 import cv2
 from glob import glob
 from sklearn.utils import shuffle
@@ -10,14 +11,9 @@ import tensorflow as tf
 from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, ReduceLROnPlateau, EarlyStopping
 from tensorflow.keras.optimizers import Adam, SGD
 from sklearn.model_selection import train_test_split
-from tensorflow.keras import mixed_precision # Added import
 from model import unet3plus
 from metrics import dice_loss, dice_coef, iou
 import argparse
-
-# Enable Mixed Precision for T4 GPU (speeds up training)
-policy = mixed_precision.Policy('mixed_float16')
-mixed_precision.set_global_policy(policy)
 
 def create_dir(path):
     if not os.path.exists(path):
@@ -124,13 +120,35 @@ if __name__ == "__main__":
 
     """ Model """
     model = unet3plus((IMG_H, IMG_W, 3))
-    model.compile(loss=dice_loss, optimizer=Adam(lr), metrics=[dice_coef, iou, "Recall", "Precision"])
+    
+    # Enable XLA compilation for speed acceleration on GPU
+    model.compile(loss=dice_loss, optimizer=Adam(lr), metrics=[dice_coef, iou, "Recall", "Precision"], jit_compile=True)
     # model.summary()
+
+    """ Checkpoint & Resume Logic """
+    initial_epoch = 0
+    if os.path.exists(model_path):
+        print(f"Found existing model at {model_path}. Loading weights...")
+        try:
+            model.load_weights(model_path)
+            print("Weights loaded successfully.")
+        except Exception as e:
+            print(f"Could not load weights: {e}")
+
+    if os.path.exists(csv_path):
+        print(f"Found existing logs at {csv_path}. Reading initial epoch...")
+        try:
+            df = pd.read_csv(csv_path)
+            if not df.empty:
+                initial_epoch = df["epoch"].max() + 1
+                print(f"Resuming from epoch {initial_epoch + 1}")
+        except Exception as e:
+            print(f"Could not read logs: {e}")
 
     callbacks = [
         ModelCheckpoint(model_path, verbose=1, save_best_only=True),
         ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, min_lr=1e-10, verbose=1),
-        CSVLogger(csv_path),
+        CSVLogger(csv_path, append=True),
         EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=False)
     ]
 
@@ -138,5 +156,6 @@ if __name__ == "__main__":
         train_dataset,
         epochs=num_epochs,
         validation_data=valid_dataset,
-        callbacks=callbacks
+        callbacks=callbacks,
+        initial_epoch=initial_epoch
     )
