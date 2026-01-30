@@ -111,7 +111,7 @@ def unet3plus(input_shape, num_classes=1):
 
     """ Output """
     y1 = L.Conv2D(num_classes, kernel_size=3, padding="same")(d1)
-    y1 = L.Activation("sigmoid")(y1)
+    y1 = L.Activation("sigmoid", dtype='float32')(y1)
     outputs = [y1]
 
     model = tf.keras.Model(inputs, outputs)
