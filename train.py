@@ -11,10 +11,8 @@ from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, ReduceLROnPla
 from tensorflow.keras.optimizers import Adam, SGD
 from sklearn.model_selection import train_test_split
 from model import unet3plus
-from metrics import dice_loss, dice_coef
-
-IMG_H = 256  
-IMG_W = 256
+from metrics import dice_loss, dice_coef, iou
+import argparse
 
 def create_dir(path):
     if not os.path.exists(path):
@@ -37,37 +35,53 @@ def load_dataset(path, split=0.1):
     return (train_x, train_y), (valid_x, valid_y), (test_x, test_y)
 
 
-def read_image(path):
+def read_image(path, img_h, img_w):
     path = path.decode()
     image = cv2.imread(path, cv2.IMREAD_COLOR)
-    image = cv2.resize(image, (IMG_W, IMG_H))
+    image = cv2.resize(image, (img_w, img_h))
     image = image / 255.0
     image = image.astype(np.float32)
     return image
 
-def read_mask(path):
+def read_mask(path, img_h, img_w):
     path = path.decode()
     mask = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-    mask = cv2.resize(mask, (IMG_W, IMG_H))
+    mask = cv2.resize(mask, (img_w, img_h))
     mask = mask / 255.0
     mask = mask.astype(np.float32)
     mask = np.expand_dims(mask, axis=-1)
     return mask
 
-def tf_parse(x, y):
+def tf_parse(x, y, img_h, img_w):
     def _parse(x, y):
-        x = read_image(x)
-        y = read_mask(y)
+        x = read_image(x, img_h, img_w)
+        y = read_mask(y, img_h, img_w)
         return x, y
 
     x, y = tf.numpy_function(_parse, [x, y], [tf.float32, tf.float32])
-    x.set_shape([IMG_H, IMG_W, 3])
-    y.set_shape([IMG_H, IMG_W, 1])
+    x.set_shape([img_h, img_w, 3])
+    y.set_shape([img_h, img_w, 1])
     return x, y
 
-def tf_dataset(X, Y, batch=2):
+def tf_dataset(X, Y, batch=2, img_h=256, img_w=256, augment=False):
     ds = tf.data.Dataset.from_tensor_slices((X, Y))
-    ds = ds.map(tf_parse).batch(batch).prefetch(10)
+    
+    def _augment_fn(x, y):
+        # Random horizontal flip
+        if tf.random.uniform(()) > 0.5:
+            x = tf.image.flip_left_right(x)
+            y = tf.image.flip_left_right(y)
+        # Random vertical flip
+        if tf.random.uniform(()) > 0.5:
+            x = tf.image.flip_up_down(x)
+            y = tf.image.flip_up_down(y)
+        return x, y
+
+    ds = ds.map(lambda x, y: tf_parse(x, y, img_h, img_w), num_parallel_calls=tf.data.AUTOTUNE)
+    if augment:
+        ds = ds.map(_augment_fn, num_parallel_calls=tf.data.AUTOTUNE)
+        
+    ds = ds.batch(batch).prefetch(tf.data.AUTOTUNE)
     return ds
 
 if __name__ == "__main__":
@@ -75,40 +89,49 @@ if __name__ == "__main__":
     np.random.seed(42)
     tf.random.set_seed(42)
 
+    """ Argument Parsing """
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset_path", type=str, default="Kvasir-SEG", help="Path to the dataset")
+    parser.add_argument("--save_path", type=str, default="files", help="Path to save model and logs")
+    parser.add_argument("--epochs", type=int, default=100, help="Number of epochs")
+    parser.add_argument("--batch_size", type=int, default=2, help="Batch size")
+    parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
+    parser.add_argument("--img_size", type=int, default=256, help="Image size (H and W)")
+    args = parser.parse_args()
+
     """ Directory for storing files """
-    create_dir("files")
+    create_dir(args.save_path)
 
     """ Hyperparameters """
-    batch_size = 2
-    lr = 1e-4
-    num_epochs = 500
-    model_path = os.path.join("files", "model.keras")
-    csv_path = os.path.join("files", "log.csv")
+    IMG_H = args.img_size
+    IMG_W = args.img_size
+    batch_size = args.batch_size
+    lr = args.lr
+    num_epochs = args.epochs
+    model_path = os.path.join(args.save_path, "model.keras")
+    csv_path = os.path.join(args.save_path, "log.csv")
 
     """ Dataset """
-    dataset_path = "Kvasir-SEG"
-    (train_x, train_y), (valid_x, valid_y), (test_x, test_y) = load_dataset(dataset_path)
+    (train_x, train_y), (valid_x, valid_y), (test_x, test_y) = load_dataset(args.dataset_path)
 
     print(f"Train: \t{len(train_x)} - {len(train_y)}")
     print(f"Valid: \t{len(valid_x)} - {len(valid_y)}")
     print(f"Test: \t{len(test_x)} - {len(test_y)}")
 
-    train_dataset = tf_dataset(train_x, train_y, batch=batch_size)
-    valid_dataset = tf_dataset(valid_x, valid_y, batch=batch_size)
+    train_dataset = tf_dataset(train_x, train_y, batch=batch_size, img_h=IMG_H, img_w=IMG_W, augment=True)
+    valid_dataset = tf_dataset(valid_x, valid_y, batch=batch_size, img_h=IMG_H, img_w=IMG_W, augment=False)
 
     """ Model """
     model = unet3plus((IMG_H, IMG_W, 3))
-    model.compile(loss=dice_loss, optimizer=Adam(lr), metrics=[dice_coef])
-    model.summary()
+    model.compile(loss=dice_loss, optimizer=Adam(lr), metrics=[dice_coef, iou, "Recall", "Precision"])
+    # model.summary()
 
     callbacks = [
         ModelCheckpoint(model_path, verbose=1, save_best_only=True),
         ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, min_lr=1e-10, verbose=1),
         CSVLogger(csv_path),
-        EarlyStopping(monitor='val_loss', patience=50, restore_best_weights=False)
+        EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=False)
     ]
-
-
 
     model.fit(
         train_dataset,

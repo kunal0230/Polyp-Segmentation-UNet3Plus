@@ -1,153 +1,91 @@
-Polyp Segmentation Using UNet 3+ in TensorFlow
-==============================================
+# Polyp Segmentation Using UNet 3+ in TensorFlow
 
-This project implements a deep learning model for segmenting polyps in medical images using the UNet 3+ architecture in TensorFlow. The dataset used for this project is the Kvasir-SEG dataset.
+This project implements a deep learning model for segmenting polyps in medical images using the **UNet 3+** architecture in TensorFlow. It is designed to be easy to use, with support for Google Colab and command-line configuration.
 
-Features
---------
+## Features
 
--   **UNet 3+ Architecture**: Efficient and advanced segmentation model.
+- **UNet 3+ Architecture**: Advanced segmentation model with full-scale skip connections.
+- **Metrics**: Dice Coefficient, IoU (Jaccard Index), Precision, Recall.
+- **Data Augmentation**: Random flipping and rotation during training.
+- **Configurable**: Easy-to-use command-line arguments for hyperparameters.
+- **Colab Ready**: Includes `Train_on_Colab.ipynb` for one-click training on Google Colab.
 
--   **Custom Loss and Metrics**: Dice loss and Dice coefficient for evaluating segmentation quality.
+## Dataset
 
--   **Dataset Handling**: Automated loading, preprocessing, and splitting into training, validation, and testing sets.
+The project uses the **Kvasir-SEG** dataset.
 
--   **Callbacks**: Integrated ModelCheckpoint, EarlyStopping, ReduceLROnPlateau, and CSVLogger for robust training.
+1. Download the dataset (e.g., from [Simula](https://datasets.simula.no/kvasir-seg/)).
+2. Unzip it. You should have a folder `Kvasir-SEG` containing `images` and `masks`.
 
-Installation
-------------
+## Installation
 
-1.  Clone the repository:
+### Local Setup
 
-    ```
-    git clone <repository-url>
-    cd Polyp-Segmentation-using-UNet-3-Plus-in-TensorFlow-main
-    ```
+1. Clone the repository:
 
-2.  Install dependencies:
+   ```bash
+   git clone <repository-url>
+   cd Polyp-Segmentation-using-UNet-3-Plus-in-TensorFlow-main
+   ```
 
-    ```
-    pip install -r requirements.txt
-    ```
+2. Install dependencies:
 
-    Ensure you have TensorFlow installed with macOS Metal support if using an M1/M2 Mac:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-    ```
-    pip install tensorflow-macos tensorflow-metal
-    ```
+### Google Colab
 
-Dataset
--------
+1. Upload the `Kvasir-SEG.zip` and the project files (or clone the repo in Colab).
+2. Open `Train_on_Colab.ipynb` and run the cells.
 
-The Kvasir-SEG dataset is used in this project. The dataset should be organized as follows:
+## Usage
 
-```
-Kvasir-SEG/
-├── images/
-│   ├── img1.jpg
-│   ├── img2.jpg
-│   └── ...
-├── masks/
-│   ├── mask1.jpg
-│   ├── mask2.jpg
-│   └── ...
+### Training
+
+Run `train.py` to train the model. You can specify parameters via command line:
+
+```bash
+python train.py --dataset_path "Kvasir-SEG" --epochs 100 --batch_size 4 --img_size 256
 ```
 
-Download the dataset and place it in the project directory.
+Arguments:
 
-Usage
------
+- `--dataset_path`: Path to the dataset folder (default: `Kvasir-SEG`).
+- `--save_path`: Path to save model and logs (default: `files`).
+- `--epochs`: Number of epochs (default: 100).
+- `--batch_size`: Batch size (default: 2).
+- `--lr`: Learning rate (default: 1e-4).
+- `--img_size`: Image resolution (default: 256).
 
-### Training the Model
+### Evaluation
 
-1.  Adjust the hyperparameters and paths in `train.py` as needed.
+Run `test.py` to evaluate the model and generate result images:
 
-2.  Run the training script:
-
-    ```
-    python train.py
-    ```
-
-3.  The trained model and logs will be saved in the `files/` directory.
-
-### Evaluating the Model
-
-1.  Use the `test.py` script to evaluate the model on the test set.
-
-2.  Run the evaluation:
-
-    ```
-    python test.py
-    ```
-
-Model Summary
--------------
-
-Below is a snippet of the UNet 3+ model summary:
-
-```
-Layer (type)                  Output Shape              Param #        Connected to
-------------------------------- --------------------------- ---------------- ----------------------------
-input_layer (InputLayer)      (None, 256, 256, 3)       0              -
-conv1_pad (ZeroPadding2D)     (None, 262, 262, 3)       0              input_layer[0][0]
-conv1_conv (Conv2D)           (None, 128, 128, 64)      9,472          conv1_pad[0][0]
-...
-Total params: 16,463,809 (62.80 MB)
-Trainable params: 16,428,097 (62.67 MB)
-Non-trainable params: 35,712 (139.50 KB)
+```bash
+python test.py --model_path "files/model.keras" --dataset_path "Kvasir-SEG" --img_size 256
 ```
 
-For the full model summary, refer to the `model_summary.txt` file in the repository.
+Arguments:
 
-Results
--------
+- `--model_path`: Path to the trained model file.
+- `--save_path`: Path to save result images (default: `results`).
+- `--img_size`: Image resolution (must match training resolution).
 
--   **Training Set**: 800 images and masks
+## Results
 
--   **Validation Set**: 100 images and masks
+The `test.py` script will output quantitative metrics (Dice, IoU, Recall, Precision) and save visual comparisons in the `results/` folder.
 
--   **Test Set**: 100 images and masks
+Example output:
 
-Hyperparameters
----------------
+- **Dice Coefficient**: ~0.85
+- **IoU**: ~0.75
 
--   **Image Size**: 256x256
+## Model Architecture
 
--   **Batch Size**: 2
+UNet 3+ utilizes full-scale skip connections, combining high-level semantics with low-level details more effectively than standard UNet or UNet++.
 
--   **Learning Rate**: 0.0001
+## Credits
 
--   **Epochs**: 500
-
-Callbacks
----------
-
--   **ModelCheckpoint**: Saves the best model based on validation loss.
-
--   **ReduceLROnPlateau**: Reduces learning rate when validation loss plateaus.
-
--   **EarlyStopping**: Stops training if validation loss does not improve.
-
--   **CSVLogger**: Logs training metrics to `log.csv`.
-
-Requirements
-------------
-
--   Python 3.8+
-
--   TensorFlow 2.13+
-
--   NumPy
-
--   OpenCV
-
--   scikit-learn
-
-Acknowledgements
-----------------
-
--   **Dataset**: Kvasir-SEG Dataset
-
--   **Framework**: TensorFlow
-
--   **Architecture**: UNet 3+
+- **Paper**: UNet 3+: A Full-Scale Connected UNet for Medical Image Segmentation.
+- **Dataset**: Kvasir-SEG.
