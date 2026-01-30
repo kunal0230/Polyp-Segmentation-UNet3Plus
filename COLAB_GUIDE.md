@@ -1,161 +1,87 @@
-# Step-by-Step Guide: Training Polyp Segmentation on Google Colab
+# 🚀 Ultimate Guide: Training Polyp Segmentation on Google Colab
 
-This guide will walk you through setting up and running the training process on Google Colab, even if you are new to it.
+This guide provides two ways to run the training: **The Easy Way (Notebook)** and **The Manual Way (Terminal)**.
 
-## Prerequisites
+---
 
-1. **Google Account**: To access Google Colab and Drive.
-2. **Dataset**: The `Kvasir-SEG` dataset downloaded on your local computer as a `.zip` file (e.g., `Kvasir-SEG.zip`).
-    * Inside the zip, it should have `images/` and `masks/` folders.
-3. **GitHub Account**: To access the code repository.
+## ⚡ Option 1: The Easy Way (Recommended)
 
-## Step 1: Open Google Colab and Set GPU
+We have created a ready-to-use notebook `Train_on_Colab.ipynb` that automates everything.
 
-1. Go to [Google Colab](https://colab.research.google.com/).
-2. Click **"New Notebook"** in the bottom right, or select **GitHub** tab.
-3. **Action**: In the top menu, go to **Runtime** > **Change runtime type**.
-4. **Action**: Under **Hardware accelerator**, select **T4 GPU** (or any available GPU).
-5. Click **Save**. This is crucial for fast training!
+1. **Open Google Colab**: [colab.research.google.com](https://colab.research.google.com/)
+2. **Upload the Notebook**:
+    * Click **Upload** -> Select `Train_on_Colab.ipynb` from this repository.
+    * *OR* Select the **GitHub** tab -> Search for this repo -> Select `Train_on_Colab.ipynb`.
+3. **Run All Cells**:
+    * Go to **Runtime** > **Run all**.
+    * It will automatically check your GPU, install libraries, download the dataset, and start the **Optimized Training**.
 
-## Step 2: Clone the Repository
+That's it! Just wait for the results.
 
-In the first code cell of your notebook, run the following command to download your code into the Colab environment.
+---
 
-```python
-!git clone https://github.com/kunal0230/Polyp-Segmentation-UNet3Plus.git
-%cd Polyp-Segmentation-UNet3Plus
-```
+## 🛠️ Option 2: The Manual Step-by-Step Way
 
-* `!git clone` downloads the code.
-* `%cd` changes the directory so you are inside the project folder.
+If you prefer to run commands manually or want to understand the process, follow these steps.
 
-## Step 3: Install Dependencies
+### Step 1: Open Colab & Set GPU
 
-Run the next cell to install the required libraries.
+1. Create a **New Notebook**.
+2. **Runtime** > **Change runtime type** > Select **T4 GPU** (or V100/A100).
+3. Click **Save**.
 
-```python
-!pip install -r requirements.txt
-```
-
-## Step 4: Upload the Dataset
-
-You have two options here.
-
-### Option A: Upload directly (Easiest for small files)
-
-1. Click the **Folder icon** on the left sidebar (Files).
-2. Click the **Upload icon** (file with an arrow).
-3. Select your `Kvasir-SEG.zip` file from your computer.
-4. Wait for the upload to finish (can take time depending on internet speed).
-
-### Option B: Mount Google Drive (Faster if dataset is already on Drive)
-
-1. Upload `Kvasir-SEG.zip` to your Google Drive first.
-2. In Colab, run:
-
-    ```python
-    from google.colab import drive
-    drive.mount('/content/drive')
-    ```
-
-3. Copy the zip file to the current folder:
-
-    ```python
-    !cp /content/drive/MyDrive/path/to/Kvasir-SEG.zip .
-    ```
-
-## Step 5: Unzip the Dataset
-
-Run this command to unzip the dataset into the project folder.
+### Step 2: Clone the Repository
 
 ```python
-!unzip -q Kvasir-SEG.zip
+!git clone https://github.com/kunal0230/Polyp-Segmentation-Using-UNet-3-with-TensorFlow.git
+%cd Polyp-Segmentation-Using-UNet-3-with-TensorFlow
+!git pull
 ```
 
-* You should now see a `Kvasir-SEG` folder in the Files sidebar.
-
-## Step 6: Start Training
-
-Now you are ready to train! The script has been optimized for Colab (Mixed Precision, XLA, Caching).
-
- **Basic Command:**
-
- ```python
- !python train.py --dataset_path "Kvasir-SEG" --epochs 50 --batch_size 16 --lr 1e-3 --img_size 256
- ```
-
- **Optimized Command (Recommended):**
-
- ```python
- !python train.py \
-     --dataset_path "Kvasir-SEG" \
-     --epochs 100 \
-     --batch_size 16 \
-     --lr 1e-3 \
-     --img_size 256 \
-     --use_cosine_lr \
-     --mixed_precision
- ```
-
- **Parameters:**
-
-* `--use_cosine_lr`: Enables Cosine Annealing scheduler (better results).
-* `--mixed_precision`: Enables FP16 training (2x faster).
-* `--batch_size`: 16 is good for T4 GPU. Use 8 if OOM.
-* `--img_size`: 256 is standard. 320 gives better accuracy but is slower.
-
-## Step 7: Monitor Training
-
-You will see output like this for each epoch:
-
-```
-Epoch 1/50
-100/100 [==============================] - 10s 100ms/step - loss: 0.5 - dice_coef: 0.5 - val_loss: 0.4 ...
-```
-
-Wait for it to finish. The best model will be saved automatically to `files/model.keras`.
-
-## Resuming Training
-
-The training script `train.py` now supports **automatic resuming**.
-If your Colab runtime disconnects:
-
-1. **Mount Drive** (if you saved files there).
-2. **Pull latest code**: `!git pull`
-3. **Run training again**: `!python train.py ...`
-
-The script will detect the existing `model.keras` and `log.csv` and resume from the last saved epoch automatically.
-
-## Step 8: Evaluate and Test
-
-To see how well the model works on unseen data, run:
+### Step 3: Install Dependencies
 
 ```python
-!python test.py --model_path "files/model.keras" --dataset_path "Kvasir-SEG" --img_size 256
+!pip install -q opencv-python scikit-learn pandas tensorflow
 ```
 
-* This will generate predicted images in the `results/` folder.
-
-## Step 9: Visualize and Download Results
-
-To quickly see a result in the notebook:
+### Step 4: Download Dataset
 
 ```python
-import cv2
-from google.colab.patches import cv2_imshow
-import glob
-
-# specific result or random one
-clean_image = cv2.imread(glob.glob("results/*.jpg")[0])
-cv2_imshow(clean_image)
+!wget https://datasets.simula.no/downloads/kvasir-seg.zip
+!unzip -q kvasir-seg.zip
+!mv Kvasir-SEG dataset
 ```
 
-To download all results and the trained model to your computer:
+### Step 5: Start Optimized Training 🚀
+
+Run this command to use **Mixed Precision** (2x speed) and **Cosine Decay** (better accuracy).
 
 ```python
-!zip -r training_output.zip files results
-from google.colab import files
-files.download('training_output.zip')
+!python train.py \
+    --dataset_path "dataset" \
+    --epochs 100 \
+    --batch_size 16 \
+    --lr 1e-3 \
+    --img_size 256 \
+    --use_cosine_lr \
+    --mixed_precision
 ```
 
-**That's it! You have successfully trained and evaluated a deep learning model for medical image segmentation.**
+### Step 6: Monitor Progress
+
+You can see the logs in real-time. If the session disconnects, just re-run the training command, and it will **automatically resume** from the last epoch!
+
+### Step 7: Evaluate
+
+```python
+!python test.py --model_path "files/model.keras" --dataset_path "dataset" --img_size 256
+```
+
+---
+
+## 🏆 Tips for Best Results
+
+* **Always use T4 GPU or better.**
+* **Mount Google Drive** to save your models permanently.
+* **Use Mixed Precision**: It saves memory and doubles the speed.
+* **Don't close the tab**: Colab will timeout if left idle. Use the "Keep Alive" script in `colab_setup.py` if needed.
